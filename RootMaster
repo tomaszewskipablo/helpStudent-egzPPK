@@ -1,0 +1,465 @@
+#include<iostream>
+#include<iomanip>
+#include<string>
+#include<fstream>
+#include <cmath>
+#define M_PI 3.14159265358979323846
+
+using namespace std;
+
+string UsunSpacje(string napis);
+void wypisz(string output, double modul, double fi, int pierwiastek, string linijka);
+int getPierwiastek(string & linijka);
+void policzRzeczywistaiUrojona(string & linijka, double & rzeczywista, double & urojona);
+void odczytaj_argumenty(int ile, char ** argumenty, string & szInput, string & szOutput, bool & szHelp);
+int  znajdzRozdzielnik(string napis);
+bool plusCzyMinus(string napis);
+bool czyPoprawneDane(string napis);
+void wersjaDlaPliku(fstream &plik, string output);
+void wersjaDlaRecznie(string output);
+double obliczFi(double a, double b, double z);
+void wypiszKrotkapomoc();
+
+int main(int argc, char* argv[]) {
+	string input;
+	string output;
+	bool help = 0;
+	odczytaj_argumenty(argc, argv, input, output, help);
+
+	// Program wypisuje krtoka pomoc 
+	if (help == true)	wypiszKrotkapomoc();
+
+	fstream plik;
+	plik.open(input, ios::in);
+	// 
+	if (!plik.good())
+	{
+		//Podaj recznie
+		wersjaDlaRecznie(output);
+	}
+	else
+	{
+		//Wczytuj z pliku
+		wersjaDlaPliku(plik, output);
+	}
+
+	return 0;
+}
+/* Funkcja odczytujace linie z pliku
+Dla kazdej poprawnie wprowadzonej linii funkcja:
+wyznacza pierwiastek poprzez funkcje getPierwiastek(),
+liczy czesc rzeczywista i urojona poprzez funkcje policzRzeczywistaiUrojona()
+liczy modul oraz fi poprzez funkcje obliczFi()
+Obliczone dane oraz plik wyjsciowy wysylane sa do funkcji Wypisz()
+Pętla wykonuje jedna iteracje dla każdej zczytanej z pliku
+parametry funkcji :
+−−−−−−−−−−−−−−−−−−
+plik - plik otwarty w funkcji main z ktorego beda pobierane linie
+output - nazwa pliku wyjsciowego podanego przez uzytkownika
+wartosc zwracana :
+−−−−−−−−−−−−−−−−−
+brak
+
+autor : Paweł Tomaszewski 
+2017−11−22
+*/
+void wersjaDlaPliku(fstream &plik, string output)
+{
+	//Dla kazdej linii
+	while (!plik.eof()) {
+
+		string linijka;
+		//Wczytaj linie z pliku
+		getline(plik, linijka);
+
+		// Jesli wczytana linika nie jest poprawna, nie wykonuj reszty petli dla tej linii
+		if (!czyPoprawneDane(linijka))		continue;
+
+		int pierwiastek = getPierwiastek(linijka);	// funkcja przypisuje pierwiastek i usuwa go z linijka
+		double rzeczywista, urojona;
+		policzRzeczywistaiUrojona(linijka, rzeczywista, urojona);
+		
+		//Policz modul i argument
+		double modul = sqrt(rzeczywista*rzeczywista + urojona*urojona);
+		double fi = obliczFi(rzeczywista, urojona, modul);
+		wypisz(output, modul, fi, pierwiastek, linijka);
+	}
+}
+/* Funkcja odczytujace linie wprowadzne przez uztkownika 
+Dla kazdej poprawnie wprowadzonej linii funkcja:
+wyznacza pierwiastek poprzez funkcje getPierwiastek(),
+liczy czesc rzeczywista i urojona poprzez funkcje policzRzeczywistaiUrojona()
+liczy modul oraz fi poprzez funkcje obliczFi()
+Obliczone dane oraz plik wyjsciowy wysylane sa do funkcji Wypisz()
+Pętla wykonuje jedna iteracje dla każdej lini wprowadzonej z konsoli.
+Wprowadzanie mozemy przerwac poprzez wprowadzenie q
+
+parametry funkcji :
+−−−−−−−−−−−−−−−−−−
+plik - plik otwarty w funkcji main z ktorego beda pobierane linie
+output - nazwa pliku wyjsciowego podanego przez uzytkownika,
+wartosc zwracana :
+−−−−−−−−−−−−−−−−−
+brak
+
+autor : Paweł Tomaszewski
+2017−11−10
+*/
+void wersjaDlaRecznie(string output)
+{
+	cout << "Wprowadz dane recznie, jesli chcesz zakonczyc wprowadz q " << endl;
+	string linijka;
+	for (;;)
+	{
+		getline(cin, linijka);
+		if ((linijka[0] == 'q') || (linijka[0] == 'Q'))		return;
+		if (!czyPoprawneDane(linijka))
+		{
+			cout << "Liczba zespolona zostala wprowadzona niepoprawnie" << endl << "Wprowadz liczbe jeszcze raz, lub zakoncz program wprowadzajac q" << endl;
+			continue;
+		}
+		
+		int pierwiastek = getPierwiastek(linijka);	// funkcja przypisuje pierwiastek i usuwa go z linijka
+		double rzeczywista, urojona;
+		policzRzeczywistaiUrojona(linijka, rzeczywista, urojona);
+
+		//Policz modul i argument
+		double modul = sqrt(rzeczywista*rzeczywista + urojona*urojona);
+		double fi = obliczFi(rzeczywista, urojona, modul);
+		wypisz(output, modul, fi, pierwiastek, linijka);
+	}
+}
+/* Funkcja wypisuje obliczone dane na ekran lub do konsoli
+Wypisuje liczbe zespolona, oblicza jej pierwiastki oraz wypisuje je.
+parametry funkcji :
+−−−−−−−−−−−−−−−−−−
+output - nazwa pliku wyjsciowego podanego przez uzytkownika
+modul - modul liczby zespolonej
+fi - argument liczby zespolonej
+pierwiastek - stopien pierwiastka liczby zespolonej
+linijka - liczba zespolona(bez stopnia pierwiastka)
+wartosc zwracana :
+−−−−−−−−−−−−−−−−−
+brak
+
+autor : Paweł Tomaszewski
+2017−11−22
+*/
+void wypisz(string output, double modul, double fi, int pierwiastek, string linijka)
+{
+	fstream plikWyjsciowy;
+	plikWyjsciowy.open(output, ios::app);
+	if (output.length() > 0) {
+		plikWyjsciowy << linijka << endl;
+	}
+	else {
+		cout << linijka << endl;
+	}
+
+	//Policz pierwiastki liczby zespolonej
+	for (int i = 0; i < pierwiastek; i++) {
+		double re = pow(modul, 1.0 / pierwiastek)*(cos((fi + (2 * M_PI*i)) / pierwiastek));
+		if ((-0.0001 < re) && (re < 0.0001)) re = 0;
+		double im = pow(modul, 1.0 / pierwiastek)*(sin((fi + (2 * M_PI*i)) / pierwiastek));
+		if ((-0.0001 < im) && (im < 0.0001)) im = 0;
+
+		//Gdzie wypisac?
+		if (output.length() > 0) {
+			plikWyjsciowy << "\t" << i + 1 << ". ";
+			if (re != 0)
+			{
+				plikWyjsciowy << re;
+			}
+			if (im != 0)
+			{
+				if (im > 0) plikWyjsciowy << "+";
+				plikWyjsciowy << im << "i";
+			}
+			plikWyjsciowy << endl;
+		}
+		else
+		{
+			//Wypisz na ekran
+			cout << "\t" << i + 1 << ". ";
+			if (re != 0)
+			{
+				cout << re;
+			}
+			if (im != 0)
+			{
+				if (im > 0) cout << "+";
+				cout << im << "i";
+			}
+			cout << endl;
+		}
+	}
+	if (output.length() > 0) {
+		//Wypisz do pliku
+		plikWyjsciowy << endl;
+	}
+	else {
+		//Wypisz na ekran
+		cout << endl;
+	}
+}
+/* Funkcja wydziela z linikii czesc rzeczywista i urojona liczby zespolonej
+parametry funkcji :
+−−−−−−−−−−−−−−−−−−
+wartosc zwracana :
+linijka - liczba zespolona(bez pierwiastka), przekszalcona i przeslana przez referencje
+rzeczywista - czesc rzeczywista liczby zespolonej, wyliczona i przeslana przez referencje
+urojona - czesc urojona liczby zespolonej, wyliczona i przeslana przez referencje
+−−−−−−−−−−−−−−−−−
+brak
+
+autor : Paweł Tomaszewski
+2017−10−20
+*/
+void policzRzeczywistaiUrojona(string & linijka, double & rzeczywista, double & urojona)
+{
+	linijka = UsunSpacje(linijka);
+	int pozycjaZnakuRozdzielenia = znajdzRozdzielnik(linijka);
+
+	//Wyciagamy podciag od pozycji 0 do znaku rozdzielenia
+	string sLewa = linijka.substr(0, pozycjaZnakuRozdzielenia);
+	rzeczywista = atof(sLewa.c_str());    // Czesc rzeczywista - konwertuje z string na double
+	
+	//Wyciagamy od pozycji znaku (ze znakiem) do konca (domyslnie jest do konca)
+	string sPrawa = linijka.substr(pozycjaZnakuRozdzielenia);
+	urojona = atof(sPrawa.c_str());             //Czesc urojona - konwertuje z string na double
+	
+}
+/* Funkcja odczytujaca parametry wywolania programu. Sa one podane w postaci przelacznikow
+−i input nazwa pliku wejsciowego
+−o output nazwa pliku wyjsciowego
+−h wyswielenie pomocy
+Przelaczniki moga byc podane w dowolnej kolejnosci .
+
+parametry funkcji :
+−−−−−−−−−−−−−−−−−−
+ile −− liczba parametrow przy uruchomieniu programu
+argumenty −− tablica wskaznikow na lancuchy uzytych przy uruchomienieu programu
+szInput −− parametr wyjsciowy, do ktorego zostanie zapisana odczytana nazwa pliku wejsciowego
+szOutput −− parameter wyjsciowy, do ktorego zostanie zapisana odczytana nazwa pliku wyjsciowego
+szHelp −− parameter wyjsciowy, w ktorym zostanie zapisana informacja czy wystapilo -h
+
+
+wartosc zwracana :
+−−−−−−−−−−−−−−−−−
+
+uwagi :
+−−−−−−
+brak
+autor : Paweł Tomaszewski ( Na podstawie "PPK_Pierwszy-program.pdf" )
+2017−11−22
+*/
+void odczytaj_argumenty(int ile, char ** argumenty, string & szInput, string & szOutput, bool & szHelp)
+{
+	const string ETYKIETAINPUT("-i");
+	const string ETYKIETAOUTPUT("-o");
+	const string ETYKIETAHELP("-h");
+	const int FLAGAINPUT = 1;
+	const int FLAGAOUTPUT = FLAGAINPUT << 1;
+	const int POPRAWNYWYNIK = FLAGAINPUT | FLAGAOUTPUT;
+	int wynik = 0;
+
+	for (int i = 1; i < ile; i++)
+	{
+		string arg(argumenty[i]);
+		if (arg == ETYKIETAINPUT)
+		{
+			szInput = argumenty[i + 1];
+			wynik |= FLAGAINPUT;
+		}
+		if (arg == ETYKIETAOUTPUT)
+		{
+			szOutput = argumenty[i + 1];
+			wynik |= FLAGAOUTPUT;
+		}
+		if (arg == ETYKIETAHELP)
+		{
+			szHelp = 1;
+		}
+	}
+}
+/* Funkcja usuwajac spacje z napisu
+parametry funkcji :
+−−−−−−−−−−−−−−−−−−
+napis -- string z ktorego funkcja ma usunac spacje
+wartosc zwracana :
+−−−−−−−−−−−−−−−−−
+napis -- string z ktorego funkcja usunela spacje
+autor : Paweł Tomaszewski
+2017−10−12
+*/
+string UsunSpacje(string napis)
+{
+	int i = 0;
+	while (i < napis.length())
+	{
+		if (napis[i] == ' ')	napis.erase(i, 1);
+		else	i++;
+	}
+	return napis;
+}
+/* Funkcja sprawdzajaca poprawnosc linii.
+Poprawna linia: liczba[spacja]liczba(+lub-)liczba(i), spacja w nawiasach [kwadratowych] musi zostac wprowadzona(oddzeila ona pierwiastek od liczby zespolonej).
+Funkcja pozwala na wystapienie innych spacji pomiedzy wyrazeniami. Spacje nie moga pojawic sie pomiedzy ta sama liczba.
+
+parametry funkcji :
+−−−−−−−−−−−−−−−−−−
+napis -- string ktory zostanie sprawdzony pod katem poprawnosci znakow
+
+wartosc zwracana :
+−−−−−−−−−−−−−−−−−
+napis
+
+autor : Paweł Tomaszewski
+2017−11−22
+*/
+bool czyPoprawneDane(string napis) {
+	int i = 0;
+	while (!(napis[i] >= '0' && napis[i] <= '9')) {		//moga wystapic tylko spacje az do napotkania pierwszej liczby
+		if (napis[i] != ' ')
+			return false;
+		i++;
+	}
+	i++;
+	while (napis[i] != ' ') {	//moga wystapic liczby az do napotkania pierwszej spacji
+		if (!(napis[i] >= '0' && napis[i] <= '9'))
+			return false;
+		i++;
+	}
+	i++;
+	for (int j = i; j < napis.length(); j++) {	// usunac wszystkie spacje z liczby zespolonej
+		if (napis[j] == ' ') {
+			napis.erase(j, 1);
+			j--;
+		}
+	}
+	if (napis[i] == '-' || napis[i] == '+')	i++;	// Przed pierwsza liczba moze pojawic sie + lub -
+	while (napis[i] != '+' && napis[i] != '-') {	// moga wystapic liczby do napotkania znaku + lub -
+		if (!(napis[i] >= '0' && napis[i] <= '9'))	return false;
+		i++;
+	}
+	i++;
+	while (napis[i] != 'i')	// moga wystapic liczby do napotkania znaku "i"
+	{
+		if (!(napis[i] >= '0' && napis[i] <= '9'))	return false;
+		i++;
+	}
+	if (napis[i] = 'i')	return true; // musi wystapic "i"
+	else	return false;
+}
+/* Funkcja wydziela z linikii stopien pierwiastka liczby zespolonej, modyfikujac linijke
+parametry funkcji :
+−−−−−−−−−−−−−−−−−−
+wartosc zwracana :
+stopien pierwiastka
+−−−−−−−−−−−−−−−−−
+Stopien pierwiastka jest usuwany z linii.
+
+autor : Paweł Tomaszewski
+2017−10−20
+*/
+int getPierwiastek(string & linijka)
+{
+	//Usun spacje z poczatku 
+	while (linijka[0] == ' ') {
+		linijka.erase(0, 1);
+	}
+	//Wyciagnij pierwiastek
+	string pierwiastek;
+	int i = 0;
+
+	// Pierwiastek - pobierz kolejne znaki do pierwszej spacji lub konca stringu
+	while (i < linijka.length() && linijka[i] != ' ') {
+		pierwiastek += linijka[i];
+		i++;
+	}
+	// Usun z linijki pierwiastek + 1spacje
+	linijka.erase(0, i + 1);
+	return atoi(pierwiastek.c_str());
+}
+/* Funkcja sprawdza czy w napisie jako rozdzielnik wystepuje + czy -.
+parametry funkcji :
+napis - string w ktorym szukany jest + lub -
+−−−−−−−−−−−−−−−−−−
+wartosc zwracana :
+linijka - linia zespolona(pierwiastek + liczba zespolona), zostaje z niej usuniety stopien pierwiastka(+spacja za nim), przesylana przez referencje
+−−−−−−−−−−−−−−−−−
+uwagi:
+funkcja ma jedna sciezke nie zwracajaca wartosci, ta sciezka nie moze jednak wystapic, poniewaz funkcja czPoprawne dane jej to gwarantuje.
+
+autor : Paweł Tomaszewski
+2017−10−24
+*/
+bool plusCzyMinus(string napis)
+{
+	for (int i = napis.length(); i > 0; i--)
+	{
+		if (napis[i] == '+')	return 1;   // Jesli Plus to 2
+		else if (napis[i] == '-')	return 0;  // Jesli Minus to 1
+	}
+}
+/* Funkcja zwraca na ktorym miejscu znajduje sie znak rozdzielajacy czesc rzeczywista od urojonej liczby zespolonej(bez stopnia pierwiastka).
+Jest to pierwszy znaleziony znak od konca.
+parametry funkcji :
+−−−−−−−−−−−−−−−−−−
+wartosc zwracana :
+napis.rfind('+')	- miejsce znalezionego od konca plusa
+napis.rfind('-')	- miejsce znalezionego od konca plusa
+−−−−−−−−−−−−−−−−−
+brak
+
+autor : Paweł Tomaszewski
+2017−10−20
+*/
+int  znajdzRozdzielnik(string napis)	// zwraca miejsce w ktory znajduje sie znak + lub -
+{
+	if (plusCzyMinus(napis))      return napis.rfind('+');
+	else	return napis.rfind('-');
+}
+
+/* Funkcja oblicza argument liczby zespolonej.
+Do wyznacznia argumentu liczby zespolonej "fi" program wykorzystuje funkcje cyklometryczne, które zwracają poprawne wyniki tylko w swoich dziedzinach.
+parametry funkcji :
+−−−−−−−−−−−−−−−−−−
+a - czesc rzeczywista liczby zespolonej
+b - czesc urojona liczby zespolonej
+z - modul liczby zespolonej
+wartosc zwracana :
+Fi :
+I i II cwiartki -> acos(a / z)
+III cwiarka		-> acos(-a / z) + M_PI;
+IV cwiarka		-> asin(b / z)
+−−−−−−−−−−−−−−−−−
+brak
+
+autor : Paweł Tomaszewski
+2017−10−20
+*/
+double obliczFi(double a, double b, double z) {
+	if ((b / z) >= 0)
+		return acos(a / z);  // I i II cwiarka
+
+	if ((b / z) < 0 && (a / z) > 0)
+		return asin(b / z);  // IV cwiarka
+
+							 //((b / z) < 0 && (a / z) < 0)
+	else
+		return acos(-a / z) + M_PI;  // III cwiarka
+}
+/* Funkcja wypisujaca krotka pomoc po wpisaniu przelacznika -h w parametrach wywolania programu.
+autor : Paweł Tomaszewski
+2017−10−20
+*/
+void wypiszKrotkapomoc()
+{
+	cout << "Krotka pomoc:" << endl;
+	cout << "Liczby zespolone wprowadzac w sposob: pierwiastek_czescRzeczywista +||- czescUrojona, znak spacji musi odzelac pierwiastek od liczby zespolonej  np. 2 4 + 0i" << endl;
+	cout << "Liczby zespolone wprowadzona w bledny sposob nie zostanie przetworzona" << endl;
+	cout << "Program uruchamiac: porgram.exe -i nazwa_pliku_wejsciwego.txt -o nazwa_pliku_wejsciwego.txt, aby uzyskac pomoc nalezy dodaj przelacznik -h" << endl;
+	cout << "Do pliku wyjsciowego pierwiastki zostaja dopisane ( jego poprzednia zawartosc nie jest usuwana )" << endl;
+	cout << "Jesli plik wyjsciowy podany przez uzytkownika nie istnieje, zostanie on utworzony i program zapisze do niego pierwiastki " << endl;
+}
